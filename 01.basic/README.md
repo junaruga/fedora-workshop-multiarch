@@ -1,16 +1,29 @@
 # 01.basic - qemu-user-static and binfmt_misc
 
-Let's understand qemu-user-static [1] and binfmt_misc [2][3] through a experiment.
+Table of contents
 
-* Interpreter files: `/usr/bin/qemu-$cpu-static`
-* binfmt_misc files: `/proc/sys/fs/binfmt_misc/qemu-$cpu`
-* Archictecture specific binary files
+* 1 qemu-user-static
+* 2 qemu-user-static and binfmt_misc
 
-## 1. What is qemu-user-static?
+Let's understand qemu-user-static and binfmt_misc through experiments.
 
-qemu RPM's user-static sub package. [1]
+---
 
-According to qemu.spec
+## 1 qemu-user-static
+
+### 1.1 Introduction
+
+What is qemu-user-static?
+
+* qemu-user-static is QEMU [1]'s "user" mode emulation "static" binaries.
+* QEMU is a cpu emulator.
+* User mode is one of "user mode vs kernel mode". That is a application process emulation. QEMU has 2 modes, that are user mode emulation and file system emulation.
+* Static binary is static built binary that does not link with shared libraries. See `man gcc` "-static" option.
+
+
+On Fedora, qemu-user-static RPM is qemu RPM's user-static sub package. [2]
+
+According to the qemu.spec
 
 ```
 Summary: QEMU user mode emulation of qemu targets static build
@@ -20,132 +33,171 @@ This package provides the user mode emulation of qemu targets built as
 static binaries
 ```
 
-## 2. What is binfmt_misc?
+### 1.2 Files
 
-See [2][3].
-binfmt_misc = Binary formats miscellaneous.
+2 kind of files in this repository to keep in mind.
 
-According to [2].
+* Interpreter files: `interpreter/qemu-$cpu-static` copied from ones in `qemu-user-static` RPM.
+* Architecture spefic binary files: `bin/hello-$cpu` built by `gcc -static` See `Makefile`.
 
-Kernel Support for miscellaneous (your favourite) Binary Formats.
+### 1.3 Experiment
 
-```
-/proc/sys/fs/binfmt_misc/
-  register
-  status
-```
+#### 1.3.1 Preparation
 
-## 3. 3 Characters
-
-There are 3 kind of files to keep in mind.
-
-* `interpreter/qemu-$cpu-static` files.
-* binfmt_misc files: `/proc/sys/fs/binfmt_misc/qemu-$cpu`
-* `bin/hello-$cpu`: Architecture spefic binary files.
-
-
-## 4. Experiment
-
-### 4.1. Preparation
-
-**Note: If you are not familar with command line, DO NOT run below commands. some commands to modify `/proc/sys/fs/binfmt_misc` state is to affect your system. Please do it by own responsibility.**
-
-Reset current status.
-
-```
-$ sudo dnf remove qemu-user-static
-
-$ rpm -q qemu-user-static
-package qemu-user-static is not installed
-```
-
-Open another terminal to run command by root user.
-We can not use "sudo" to operate `/proc/sys/fs/binfmt_misc/*` files.
-Below command is to remove `/proc/sys/fs/binfmt_misc/qemu-*` files.
-Do not worry you can install those again when you run `dnf install qemu-user-static`.
-
-```
-$ ls /proc/sys/fs/binfmt_misc/qemu-* | cat
-/proc/sys/fs/binfmt_misc/qemu-aarch64
-/proc/sys/fs/binfmt_misc/qemu-aarch64_be
-/proc/sys/fs/binfmt_misc/qemu-alpha
-...
-
-```
-
-```
-$ sudo su -
-
-# find /proc/sys/fs/binfmt_misc -type f -name 'qemu-*' -exec sh -c 'echo -1 > {}' \;
-
-# ls -l /proc/sys/fs/binfmt_misc
-total 0
---w------- 1 root root 0 Jul 25 11:33 register
--rw-r--r-- 1 root root 0 Jul 23 16:23 status
-```
-
-### 4.2. Understanding files used in this repository
-
-#### 4.2.1. `bin/hello-$cpu`: Architecture spefic binary files.
-
-The files are compiled binaries by `Makefile` and `src/*.[ch]` on each architecture.
+In this document the host OS architecture is "x86_64". Buf if your host OS is a different architecture, you can execute the experiement as well.
 
 ```
 $ uname -m
 x86_64
 ```
 
+Check files on `/proc/sys/fs/binfmt_misc`.
+
+Are there only `register` and `status` files on it?
+
 ```
+$ ls /proc/sys/fs/binfmt_misc
+register  status
+```
+
+Or are there `/proc/sys/fs/binfmt_misc/qemu-$cpu` files?
+If Fedora `qemu-user-static` RPM is installed, you see below files. You still do not need to install the `qemu-user-static` RPM.
+
+```
+$ ls /proc/sys/fs/binfmt_misc
+qemu-aarch64     qemu-m68k          qemu-mipsel     qemu-ppc64le  qemu-sparc32plus
+qemu-aarch64_be  qemu-microblaze    qemu-mipsn32    qemu-riscv32  qemu-xtensa
+qemu-alpha       qemu-microblazeel  qemu-mipsn32el  qemu-riscv64  qemu-xtensaeb
+qemu-arm         qemu-mips          qemu-or1k       qemu-s390x    register
+qemu-armeb       qemu-mips64        qemu-ppc        qemu-sh4      status
+qemu-hppa        qemu-mips64el      qemu-ppc64      qemu-sh4eb
+```
+
+If `/proc/sys/fs/binfmt_misc/qemu-$cpu` files exist, remove those for below experiment for now. Do not worry, you can restore it by `systemctl restart systemd-binfmt` if `qemu-user-static` RPM is installed or `dnf install qemu-user-static` if it is not installed.
+
+Run below command to remove `/proc/sys/fs/binfmt_misc/qemu-*` files.
+You need to run by root user. `sudo` is not allowed for the command.
+
+```
+$ sudo su -
+
+# find /proc/sys/fs/binfmt_misc -type f -name 'qemu-*' -exec sh -c 'echo -1 > {}' \;
+
+$ ls /proc/sys/fs/binfmt_misc
+register  status
+```
+
+#### 1.3.2 Execution
+
+In this case, I am running "aarch64" binary on the interpriter on the host architecture "x86_64".
+If your host OS have a different architecture, you can run other architecture binaries as well, as we prepared "aarch64" (ARM 64-bit), "armv7hl" (ARM 32-bit), "ppc64le", "s390x" interpriters and binaries in this repository.
+
+```
+$ uname -m
+x86_64
+
 $ file bin/hello-aarch64
 bin/hello-aarch64: ELF 64-bit LSB executable, ARM aarch64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=fa19c63e3c60463e686564eeeb0937959bd6f559, for GNU/Linux 3.7.0, not stripped, too many notes (256)
 
-$ file bin/hello-armv7hl
-bin/hello-armv7hl: ELF 32-bit LSB executable, ARM, EABI5 version 1 (GNU/Linux), statically linked, BuildID[sha1]=dbe96ac0190fdecea970b57ee6f75ad67fbdf255, for GNU/Linux 3.2.0, not stripped, too many notes (256)
-
-$ file bin/hello-ppc64le
-bin/hello-ppc64le: ELF 64-bit LSB executable, 64-bit PowerPC or cisco 7500, version 1 (GNU/Linux), statically linked, BuildID[sha1]=e3a66983a7862072e719a702ca2117e8d4790946, for GNU/Linux 3.10.0, not stripped, too many notes (256)
-
-$ file bin/hello-s390x
-bin/hello-s390x: ELF 64-bit MSB executable, IBM S/390, version 1 (GNU/Linux), statically linked, BuildID[sha1]=084199341ffb18cc63189904ff222e9978c74313, for GNU/Linux 3.2.0, not stripped, too many notes (256)
-
-$ file bin/hello-x86_64
-bin/hello-x86_64: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, for GNU/Linux 3.2.0, BuildID[sha1]=788d849f0d6a08f3d025de5706fec5f5f5e91513, not stripped, too many notes (256)
-```
-
-```
 $ bin/hello-aarch64
 bash: bin/hello-aarch64: cannot execute binary file: Exec format error
+```
 
-$ bin/hello-armv7hl
-bash: bin/hello-armv7hl: cannot execute binary file: Exec format error
+The interpreter `qemu-aarch64-static` runs the arch64 binary `bin/hello-aarch64`.
 
-$ bin/hello-ppc64le
-bash: bin/hello-ppc64le: cannot execute binary file: Exec format error
-
-$ bin/hello-s390x
-bash: bin/hello-s390x: cannot execute binary file: Exec format error
-
-$ bin/hello-x86_64
+```
+$ interpreter/qemu-aarch64-static bin/hello-aarch64
 Hello World!
 Endian Type: Little-endian
 Bit: 64-bit
 Sizeof {int, long, long long, void*, size_t, off_t}: {4, 8, 8, 8, 8, 8}
 ```
 
+#### 1.3.3 Restoring
 
-#### 4.2.2. `binfmt.d/qemu-$cpu-static.conf` files.
+If you want to move on next part, you do not have to run below command.
+If you want to finish your work, then restore your environment, run below command.
 
-Files copied from qemu-user-static RPM `/usr/lib/binfmt.d/qemu-$cpu-static.conf`.
+```
+$ sudo systemctl restart systemd-binfmt
+```
+
+If `qemu-user-static` RPM is installed, you see below `qemu-$cpu` files.
+
+```
+$ ls /proc/sys/fs/binfmt_misc
+qemu-aarch64     qemu-m68k          qemu-mipsel     qemu-ppc64le  qemu-sparc32plus
+qemu-aarch64_be  qemu-microblaze    qemu-mipsn32    qemu-riscv32  qemu-xtensa
+qemu-alpha       qemu-microblazeel  qemu-mipsn32el  qemu-riscv64  qemu-xtensaeb
+qemu-arm         qemu-mips          qemu-or1k       qemu-s390x    register
+qemu-armeb       qemu-mips64        qemu-ppc        qemu-sh4      status
+qemu-hppa        qemu-mips64el      qemu-ppc64      qemu-sh4eb
+```
+
+### 1.4 Conclusion
+
+* `qemu-$cpu-static` can run architecture specific binary.
 
 
-#### 4.2.3. `interpreter/qemu-$cpu-static` files.
+---
 
-Files copied from qemu-user-static RPM `/usr/bin/qemu-$cpu-static`.
+## 2 - qemu-user-static and binfmt_misc
+
+### 2.1 Introduction
+
+You learned qemu-user-static on previous part "1 qemu-user-static".
+Let's see how qemu-user-static works with binfmt_misc. You still do not need to install `qemu-user-static` RPM.
 
 
-### 4.3. Add and remove binfmt_misc entries.
+binfmt_misc is binary formats miscellaneous.
 
-#### 4.3.1. Case of "flags empty"
+According to document [3], it is a kernel support for miscellaneous (your favourite) binary formats.
+Keep in mind that this is a kernel feature.
+For now, just remember it is about below special files on `/proc/sys/fs/binfmt_misc`.
+
+You see the binfmt_misc is mounted on your system on your Fedora.
+
+```
+$ mount | grep binfmt_misc
+systemd-1 on /proc/sys/fs/binfmt_misc type autofs (rw,relatime,fd=44,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=19096)
+binfmt_misc on /proc/sys/fs/binfmt_misc type binfmt_misc (rw,relatime)
+```
+
+If you are interested in the C language level manual, see [4]. Do not ask me about the content of the manual. :)
+
+
+### 2.2 Files
+
+In this part, we use additional below files.
+
+* binfmt_misc files: `/proc/sys/fs/binfmt_misc/qemu-$cpu`
+
+There are `binfmt.d/qemu-$cpu-static.conf` files copied from ones in `qemu-user-static` RPM. But we do not use the files directly. The files are a memo of binary formats for someone who do not install `qemu-user-static` on the environment.
+
+### 2.3 Experiment
+
+#### 2.3.1 Preparation
+
+It's same with "1.3.1 Preparation".
+If `/proc/sys/fs/binfmt_misc/qemu-$cpu` files exist not like below state, let's remove those following "1.3.1 Preparation".
+You still do not need to install `qemu-user-static` RPM in this part.
+
+```
+$ ls /proc/sys/fs/binfmt_misc
+register  status
+```
+
+#### 2.3.2 Execution
+
+We execute 2 experiments.
+
+* A case of adding binary format with empty flags.
+* A case of adding binary format with `flags: F`.
+
+It's important to understand the difference of those behaviors, to debug qemu-user-static on more complex cases.
+
+
+##### 2.3.2.1 Case: binary format with empty flags
 
 Run below command to add binary format entry.
 The format is `:$name:$type:$offset:$magic:$mask:$interpreter:$flags` [2].
@@ -156,7 +208,7 @@ In this page, just keep in mind 2 items in the format.
 * `flags`: We explanin about 2 types of flags: empty or `F` in this page.
 
 
-The interpreter `/home/jaruga/git/fedora-workshop-multiarch/01.basic/interpreter/qemu-aarch64-static`'s existantce is **not checked** when running the command.
+The interpreter `/home/jaruga/git/fedora-workshop-multiarch/01.basic/interpreter/qemu-aarch64-static`'s existantce is **not checked** when running the command to register the binary format entry.
 
 ```
 # echo ":my-qemu-aarch64:M::\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7\x00:\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff:/home/jaruga/git/fedora-workshop-multiarch/01.basic/interpreter/qemu-aarch64-static:" > /proc/sys/fs/binfmt_misc/register
@@ -226,11 +278,11 @@ $ bin/hello-aarch64
 bash: bin/hello-aarch64: cannot execute binary file: Exec format error
 ```
 
-#### 4.3.2. Case of "flags: F"
+##### 2.3.2.2 Case of `flags: F`
 
 
-Run below command to add binary format entry withi **`flags: F`**.
-The interpreter `/home/jaruga/git/fedora-workshop-multiarch/01.basic/interpreter/qemu-s390x-static`'s existantce is **checked** when running the command.
+Run below command to add binary format entry with **`flags: F`**.
+The interpreter `/home/jaruga/git/fedora-workshop-multiarch/01.basic/interpreter/qemu-s390x-static`'s existantce is **checked** when running the command to register the binary format entry.
 
 ```
 $ mv interpreter/qemu-s390x-static interpreter/qemu-s390x-static.tmp
@@ -314,15 +366,27 @@ my-qemu-s390x-F  register  status
 register  status
 ```
 
-## 4.4. What we learned
+#### 2.3.3 Restoring
+
+Run below command to restore if `qemu-user-static` RPM is installed and you want to restore `/proc/sys/fs/binfmt_misc/qemu-$cpu` files. The process is almost same with "1.3.3 Restoring".
+
+```
+$ sudo systemctl restart systemd-binfmt
+```
+
+### 2.4 Conclusion
 
 * `# echo ":$name:$type:$offset:$magic:$mask:$interpreter:$flags" > /proc/sys/fs/binfmt_misc/register` to add a binary format entry.
 * `# echo -1 > /proc/sys/fs/binfmt_misc/qemu-$cpu` to remove a qemu binary format entry.
 * If the entry file's `flags` is empty, the exsistance of the interpreter is checked at run time.
 * If the entry file's `flags` is `flags: F`, the existance of the interpreter is checked when registering the entry.
 
-## 4.5. References
+---
 
-* [1] qemu-user-static: qemu's sub package user-static: https://src.fedoraproject.org/rpms/qemu
-* [2] binfmt_misc manual: https://www.kernel.org/doc/html/latest/admin-guide/binfmt-misc.html
-* [3] binfmt_misc C language level manual: https://lwn.net/Articles/630727/
+## 3 References
+
+* [1] QEMU: https://www.qemu.org/
+* [2] Fedora qemu RPM: https://src.fedoraproject.org/rpms/qemu
+* [3] binfmt_misc: https://www.kernel.org/doc/html/latest/admin-guide/binfmt-misc.html
+* [4] binfmt_misc C language level manual: https://lwn.net/Articles/630727/
+
