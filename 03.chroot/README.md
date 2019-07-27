@@ -1,9 +1,12 @@
-# 03.chroot - qemu-user-static, binfmt_misc and chroot
+# 03.chroot - qemu-user-static, binfmt_misc and chroot on Fedora
+
+## 1 Introduction
 
 `qemu-user-static` works on chroot environment.
 
 Let's see how it works. `mock` command is good example to see it. `mock` command uses chroot to enable the mock environment internally. The specified architecture's binary files are installed to the chroot environment when using `mock --forcearch $arch (cpu)` option. [1]
 
+## 2 Experiment
 
 ```
 $ uname -m
@@ -24,11 +27,9 @@ magic 7f454c460201010000000000000000000200b700
 mask ffffffffffffff00fffffffffffffffffeffffff
 ```
 
-You can use mock configuratoin files `/etc/mock/fedora-rawhide-$cpu.cfg` installed on your environment without any change.
+You can use the detault mock configuratoin files `/etc/mock/fedora-rawhide-$cpu.cfg` without any change.
 
 ```
-$ mock -r fedora-rawhide-aarch64 --forcearch=aarch64 --scrub=all
-
 $ mock -r fedora-rawhide-aarch64 --forcearch=aarch64 shell
 ```
 
@@ -140,7 +141,7 @@ magic 7f454c460201010000000000000000000200b700
 mask ffffffffffffff00fffffffffffffffffeffffff
 ```
 
-## [NEED HELP] Host OS /proc/sys/fs/binfmt_misc files are commonly used for host OS and chroot environment?
+### Host OS /proc/sys/fs/binfmt_misc files used on chroot environment?
 
 There is no file under `/var/lib/mock/fedora-rawhide-aarch64/root/proc`.
 
@@ -157,6 +158,6 @@ There is no file under `/proc/sys/fs/binfmt_misc/`.
 I assume that `/proc` is commonly used by host OS and chroot environment.
 But I am not sure. Please tell me if you know something about it. :)
 
-## References
+## 3 References
 
 * [1] mock forcearch feature: https://github.com/rpm-software-management/mock/wiki/Feature-forcearch

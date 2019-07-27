@@ -1,14 +1,11 @@
-# 02.system - How do qemu-user-static and binfmt_misc work on Fedora system?
+# 02.system - qemu-user-static and binfmt_misc on Fedora
 
-* qemu-user-static
-* systemd-binfmt service
-* binfmt_misc
-* `bin/hello-$cpu`: Architecture spefic binary files.
+## 1 Introduction
 
-## 1. Requirements
+Let's see how qemu-user-static and binfmt_misc work on Fedora OS system through experiments.
 
-My environment is like this. This instructions are specified for Fedora.
-Even when your architectur is not x86_64, you can refer the instructions.
+Our environment used for this document is like this. This instructions are specified for Fedora.
+Even when your architecture is not x86_64, you can refer this document.
 
 ```
 $ uname -m
@@ -18,21 +15,16 @@ $ cat /etc/fedora-release
 Fedora release 30 (Thirty)
 ```
 
-## 2. Instructions
+## 2 Files and programs
 
-Initial condition.
-Below archictecture specific binary file `01.basic/bin/hello-aarch64` does not work.
+Below files and programs are used.
 
-```
-$ ls /proc/sys/fs/binfmt_misc
-register  status
+* qemu-user-static RPM
+* systemd-binfmt service (systemd)
+* binfmt_misc
+* `01.basic/bin/hello-$cpu`: Architecture spefic binary files.
 
-$ file 01.basic/bin/hello-aarch64
-01.basic/bin/hello-aarch64: ELF 64-bit LSB executable, ARM aarch64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=fa19c63e3c60463e686564eeeb0937959bd6f559, for GNU/Linux 3.7.0, not stripped, too many notes (256)
-
-$ 01.basic/bin/hello-aarch64
-bash: 01.basic/bin/hello-aarch64: cannot execute binary file: Exec format error
-```
+## 3 Experiment
 
 Install qemu-user-static RPM.
 
@@ -72,7 +64,7 @@ status
 ```
 
 By the way, if you want to remove qemu-user-static completely to the state before `dnf install qemu-user-static`, run below commands.
-You need to remove `/proc/sys/fs/binfmt_misc/qemu-$cpu` files by yourself. I reported the issue [1].
+You need to remove `/proc/sys/fs/binfmt_misc/qemu-$cpu` files manually by yourself. I reported the issue [1].
 
 ```
 $ sudo dnf remove qemu-user-static
@@ -216,14 +208,14 @@ Bit: 64-bit
 Sizeof {int, long, long long, void*, size_t, off_t}: {4, 8, 8, 8, 8, 8}
 ```
 
-## 3. What we learned
+## 4 Conclusion
 
 * `qemu-user-static` RPM includes interpreter files: `/usr/bin/qemu-$cpu-static` and binfmt configuration files: `/usr/lib/binfmt.d/qemu-$cpu-static.conf`.
 * `dnf install qemu-user-static` RPM installs binfmt_misc files: `/proc/sys/fs/binfmt_misc/qemu-$cpu` from binfmt configuration files: `/usr/lib/binfmt.d/qemu-$cpu-static.conf` through `systemctl start systemd-binfmt`.
 * When you want to remove the installed binfmt_misc files: `/proc/sys/fs/binfmt_misc/qemu-$cpu`, you need to remove the files manually by root user.
 * binfmt_misc files: `/proc/sys/fs/binfmt_misc/qemu-$cpu` are installed as `flags: F` (See "01.basic" for the meaning of `flags: F`).
 
-## 4. References
+## 5 References
 
 * [1] qemu-user-static: qemu-user-static works even after "dnf remove qemu-user-static"
   https://bugzilla.redhat.com/show_bug.cgi?id=1732178
