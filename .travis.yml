@@ -1,3 +1,47 @@
 dist: xenial
 language: bash
-script: echo "script!"
+services: docker
+addons:
+  apt:
+    config:
+      retries: true
+    update: true
+    sources:
+      # To install podman and some container tools.
+      # https://github.com/containers/libpod/blob/master/install.md
+      - sourceline: "ppa:projectatomic/ppa"
+    packages:
+      - jq
+      # repository: ppa:projectatomic/ppa
+      - podman
+      - buildah
+      - skopeo
+matrix:
+  include:
+    # Docker Hub: fedora
+    # https://hub.docker.com/_/fedora
+    # Fedora official container repository. But it's slow to download.
+    # https://registry.fedoraproject.org/
+    # x86_64
+    - env: BASE_IMAGE=fedora
+    # aarch64
+    - env: BASE_IMAGE=arm64v8/fedora
+    - env: BASE_IMAGE=ppc64le/fedora
+    - env: BASE_IMAGE=s390x/fedora
+before_install:
+  - podman --version
+  - podman info
+  - docker --version
+  - docker info
+install:
+  - mkdir -p ~/.config/containers
+  - cp -p ci/registries.conf ~/.config/containers
+  - podman info
+  - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  - ls /proc/sys/fs/binfmt_misc/
+  - podman build --rm -t my-fedora .
+script:
+  - podman run --rm -t my-fedora bash -cx "uname -m && make clean && make test"
+branches:
+  only:
+    - master
