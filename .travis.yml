@@ -30,14 +30,18 @@ matrix:
     - env: BASE_IMAGE=s390x/fedora
 before_install:
   - podman --version
-  - podman info
+  - podman version
+  - podman info --debug
   - docker --version
+  - docker version
   - docker info
 install:
   - mkdir -p ~/.config/containers
   - cp -p ci/registries.conf ~/.config/containers
-  - podman info
-  - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  - podman version
+  - podman info --debug
+  - sudo podman --log-level debug run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  # - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
   - ls /proc/sys/fs/binfmt_misc/
   - podman build --rm -t my-fedora .
 script:
