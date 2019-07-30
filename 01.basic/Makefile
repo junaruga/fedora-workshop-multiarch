@@ -8,6 +8,11 @@ all :
 	gcc -o bin/hello-$(ARCH) src/main.c -static
 .PHONY : all
 
+test :
+	file bin/hello-$(ARCH)
+	bin/hello-$(ARCH)
+.PHONY : test
+
 clean :
 	rm -rf src/*.o bin/hello-$(ARCH)
 .PHONY : clean
