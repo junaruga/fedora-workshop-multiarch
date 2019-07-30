@@ -41,6 +41,3 @@ script:
     podman run --rm -t my-fedora bash -cx "
 uname -m && cd 01.basic && make clean && make && make test
 "
-branches:
-  only:
-    - master
