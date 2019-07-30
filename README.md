@@ -1,5 +1,7 @@
 # Fedora Workshop for multiarch
 
+[![Travis Build Status](https://travis-ci.org/junaruga/fedora-workshop-multiarch.svg?branch=master)](https://travis-ci.org/junaruga/fedora-workshop-multiarch)
+
 * Fock 2019 talk: [Talk-25]: Let's add Fedora multiarch containers to your CI
 
 Table of contents
