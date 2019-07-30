@@ -43,7 +43,7 @@ install:
   - sudo podman --log-level debug run --rm --privileged multiarch/qemu-user-static --reset -p yes
   # - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
   - ls /proc/sys/fs/binfmt_misc/
-  - podman build --rm -t my-fedora .
+  - podman build --rm --build-arg BASE_IMAGE="${BASE_IMAGE}" -t my-fedora .
 script:
   - podman run --rm -t my-fedora bash -cx "uname -m && make clean && make test"
 branches:
