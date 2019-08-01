@@ -294,7 +294,7 @@ $ sudo systemctl restart systemd-binfmt
 
 ## 4 podman/docker buildx
 
-https://github.com/containers/buildah/issues/1590
+It is to build multi-architecture images from common `Dockerfile`.
 
 ### Install docker buildx
 
@@ -327,29 +327,9 @@ cp bin/buildx ~/.docker/cli-plugins/docker-buildx
 
 ```
 $ docker buildx --help
-
-Usage:	docker buildx COMMAND
-
-Build with BuildKit
-
-Management Commands:
-  imagetools  Commands to work on images in registry
-
-Commands:
-  bake        Build from a file
-  build       Start a build
-  create      Create a new builder instance
-  inspect     Inspect current builder instance
-  ls          List builder instances
-  rm          Remove a builder instance
-  stop        Stop builder instance
-  use         Set the current builder instance
-  version     Show buildx version information 
-
-Run 'docker buildx COMMAND --help' for more information on a command.
 ```
 
-### Simple case to build one arch image.
+### Building multi-architecture images from common Dockerfile.
 
 docker buildx" does not use binfmt_misc files.
 
@@ -374,51 +354,46 @@ You can run `docker buildx build --platform` like this.
 $ docker buildx build --rm -t my-fedora:aarch64 --platform linux/arm64 .
 ```
 
-If you do not have `/proc/sys/fs/binfmt_misc/qemu-$cpu` files, install qemu-user-static by `dnf install qemu-user-static` to install it.
+Run the image enabling QEMU and binfmt_misc.
 
 ```
-$ cat /proc/sys/fs/binfmt_misc/qemu-aarch64
-enabled
-interpreter /usr/bin/qemu-aarch64-static
-flags: F
-offset 0
-magic 7f454c460201010000000000000000000200b700
-mask ffffffffffffff00fffffffffffffffffeffffff
-```
-
-Check the built image.
-
-```
-$ docker run -t --rm my-fedora:aarch64 uname -m
+$ docker run --rm -t my-fedora:aarch64 uname -m
 aarch64
 ```
 
-```
-$ docker buildx build --rm -t my-fedora:aarch64 --platform linux/arm64 .
+How build "ppc64le" and "s390x" image, see [10].
+
+
+### Building multi-architecture images from common Dockerfile - DOCKER_BUILDKIT=1
+
+Enabling `DOCKER_BUILDKIT=1 docker build --platforom` works on many platforms (architecture).
 
 ```
+$ DOCKER_BUILDKIT=1 docker build --help
+...
 
-### Building multi-architecture images.
-
-Use below `Dockerfile`.
-
-```
-$ cat Dockerfile
-FROM fedora
-RUN uname -m
+      --platform string         Set platform if server is multi-platform capable
+...
 ```
 
 ```
-$ docker buildx build --platform linux/amd64,linux/arm64 .
-multiple platforms feature is currently not supported for docker driver. Please switch to a different driver (eg. "docker buildx create --use")`
+$ DOCKER_BUILDKIT=1 docker build -t test/fedora-ppc64le --platform linux/ppc64le .
+$ docker run --rm -t test/fedora-ppc64le uname -m
+ppc64le
+
+$ DOCKER_BUILDKIT=1 docker build -t test/fedora-aarch64 --platform linux/aarch64 .
+$ docker run --rm -t test/fedora-aarch64 uname -m
+aarch64
+
+$ DOCKER_BUILDKIT=1 docker build -t test/fedora-s390x --platform linux/s390x .
+$ docker run --rm -t test/fedora-s390x uname -m
+s390x
 ```
 
-Crrently asking an issue about "ppc64le" and "s390x" at [10].
+### podman buildx
 
-### Install podman buildx
-
-"podman buildx" is developing at [11].
-I try to install the development version.
+"podman buildx" has been developed at [11].
+It might be going to be not "podman buildx" but "podman build --platform".
 
 ---
 
