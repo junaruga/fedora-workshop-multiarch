@@ -18,16 +18,61 @@ addons:
       - skopeo
 matrix:
   include:
-    # Docker Hub: fedora
-    # https://hub.docker.com/_/fedora
-    # Fedora official container repository. But it's slow to download.
-    # https://registry.fedoraproject.org/
-    # x86_64
-    - env: BASE_IMAGE=fedora
-    # aarch64
-    - env: BASE_IMAGE=arm64v8/fedora
-    - env: BASE_IMAGE=ppc64le/fedora
-    - env: BASE_IMAGE=s390x/fedora
+    # Fedora container image repository
+    # * Docker Hub: fedora
+    #   https://hub.docker.com/_/fedora
+    # * Fedora official container repository. But it's slow to download.
+    #   https://registry.fedoraproject.org/
+    - name: docker-x86_64"
+      env: BASE_IMAGE=fedora
+    - name: docker-aarch64
+      env: BASE_IMAGE=arm64v8/fedora
+    - name: docker-arm32"
+      env: BASE_IMAGE=arm32v7/fedora
+    - name: docker-ppc64le"
+      env: BASE_IMAGE=ppc64le/fedora
+    - name: docker-s390x"
+      env: BASE_IMAGE=s390x/fedora
+
+    # ====================
+    # Advanced ways
+    - name: "Advanced: docker-build-platform-aarch64"
+      env: PLATFORM=linux/arm64
+      install:
+        - ci/install_latest_docker.sh
+
+        - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        - DOCKER_BUILDKIT=1 docker build -t my-fedora --platform "${PLATFORM}" .
+
+    # See https://github.com/docker/buildx/issues/115 to detect other architectures.
+    - name: "Advanced: docker-buildx-platform-aarch64"
+      env: PLATFORM=linux/arm64
+      install:
+        - ci/install_latest_docker.sh
+        - ci/install_docker_buildx.sh
+
+        - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        - docker buildx build --rm -t my-fedora:aarch64 --platform "${PLATFORM}" .
+
+    - name: "Advanced: podman-aarch64"
+      install:
+        # Incompatibilities of podman from docker on Travis CI
+        # https://github.com/containers/libpod/issues/3679
+        - ci/patch_podman.sh
+
+        - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        - podman build --rm --build-arg BASE_IMAGE="${BASE_IMAGE}" -t my-fedora .
+      script:
+        - podman run --rm -t my-fedora bash -cx "uname -m && make clean test"
+    # ====================
+  allow_failures:
+    # Error: Incorrect or unknown "arch": armv7hcnl
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1691430#c6
+    - name: docker-arm32"
+    - name: "Advanced: docker-build-platform-aarch64"
+    - name: "Advanced: docker-buildx-platform-aarch64"
+    - name: "Advanced: podman-aarch64"
+  fast_finish: true
 before_install:
   - podman --version
   - podman version
@@ -36,16 +81,10 @@ before_install:
   - docker version
   - docker info
 install:
-  - mkdir -p ~/.config/containers
-  - cp -p ci/registries.conf ~/.config/containers
-  - podman version
-  - podman info --debug
-  - sudo podman --log-level debug run --rm --privileged multiarch/qemu-user-static --reset -p yes
-  # - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
-  - ls /proc/sys/fs/binfmt_misc/
-  - podman build --rm --build-arg BASE_IMAGE="${BASE_IMAGE}" -t my-fedora .
+  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  - docker build --rm --build-arg BASE_IMAGE="${BASE_IMAGE}" -t my-fedora .
 script:
-  - podman run --rm -t my-fedora bash -cx "uname -m && make clean && make test"
+  - docker run --rm -t my-fedora bash -cx "uname -m && make clean test"
 branches:
   only:
     - master
