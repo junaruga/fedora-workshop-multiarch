@@ -26,24 +26,6 @@ matrix:
 
     # ====================
     # Advanced ways
-    - name: "Advanced: docker-build-platform-aarch64"
-      env: PLATFORM=linux/arm64
-      install:
-        - ci/install_latest_docker.sh
-
-        - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-        - DOCKER_BUILDKIT=1 docker build -t my-fedora --platform "${PLATFORM}" .
-
-    # See https://github.com/docker/buildx/issues/115 to detect other architectures.
-    - name: "Advanced: docker-buildx-platform-aarch64"
-      env: PLATFORM=linux/arm64
-      install:
-        - ci/install_latest_docker.sh
-        - ci/install_docker_buildx.sh
-
-        - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-        - docker buildx build --rm -t my-fedora:aarch64 --platform "${PLATFORM}" .
-
     - name: "Advanced: podman-aarch64"
       addons:
         apt:
@@ -62,18 +44,43 @@ matrix:
         # https://github.com/containers/libpod/issues/3679
         - ci/patch_podman.sh
 
-        - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        - sudo podman --log-level debug pull multiarch/qemu-user-static
+        - sudo podman --log-level debug run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        # - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
         - podman build --rm --build-arg BASE_IMAGE="${BASE_IMAGE}" -t my-fedora .
       script:
         - podman run --rm -t my-fedora bash -cx "uname -m && make clean test"
+
+    # "docker build --platform PLATFORM" works on Fedora environment.
+    # https://github.com/containers/buildah/issues/1590#issuecomment-517225516
+    # But it does not work on Travis CI for now.
+    - name: "Advanced: docker-build-platform-aarch64"
+      env: PLATFORM=linux/arm64
+      install:
+        - ci/install_latest_docker.sh
+
+        - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        - DOCKER_BUILDKIT=1 docker build -t my-fedora --platform "${PLATFORM}" .
+
+    # See below ticket for other architectures.
+    # Supporting target platform: "ppc64le" and "s390x"
+    # https://github.com/docker/buildx/issues/115
+    - name: "Advanced: docker-buildx-build-platform-aarch64"
+      env: PLATFORM=linux/arm64
+      install:
+        - ci/install_latest_docker.sh
+        - ci/install_docker_buildx.sh
+
+        - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        - docker buildx build --rm -t my-fedora:aarch64 --platform "${PLATFORM}" .
     # ====================
   allow_failures:
     # Error: Incorrect or unknown "arch": armv7hcnl
     # https://bugzilla.redhat.com/show_bug.cgi?id=1691430#c6
     - name: armv7hl
-    - name: "Advanced: docker-build-platform-aarch64"
-    - name: "Advanced: docker-buildx-platform-aarch64"
     - name: "Advanced: podman-aarch64"
+    - name: "Advanced: docker-build-platform-aarch64"
+    - name: "Advanced: docker-buildx-build-platform-aarch64"
   fast_finish: true
 before_install:
   - docker --version
