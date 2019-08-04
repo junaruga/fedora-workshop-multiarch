@@ -8,14 +8,19 @@ matrix:
     #   https://hub.docker.com/_/fedora
     # * Fedora official container repository. But it's slow to download.
     #   https://registry.fedoraproject.org/
+    # Intel, 64-bit, Little-endian
     - name: x86_64
       env: BASE_IMAGE=fedora
+    # ARM, 64-bit, Little-endian
     - name: aarch64
       env: BASE_IMAGE=arm64v8/fedora
-    - name: arm32
+    # ARM, 32-bit, Little-endian
+    - name: armv7hl
       env: BASE_IMAGE=arm32v7/fedora
+    # IBM PowerPC, 64-bit, Little-endian
     - name: ppc64le
       env: BASE_IMAGE=ppc64le/fedora
+    # IBM Z and LinuxONE, 64-bit, Big-endian
     - name: s390x
       env: BASE_IMAGE=s390x/fedora
 
@@ -65,7 +70,7 @@ matrix:
   allow_failures:
     # Error: Incorrect or unknown "arch": armv7hcnl
     # https://bugzilla.redhat.com/show_bug.cgi?id=1691430#c6
-    - name: arm32
+    - name: armv7hl
     - name: "Advanced: docker-build-platform-aarch64"
     - name: "Advanced: docker-buildx-platform-aarch64"
     - name: "Advanced: podman-aarch64"
