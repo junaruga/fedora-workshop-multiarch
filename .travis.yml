@@ -75,7 +75,9 @@ before_install:
   - docker version
   - docker info
 install:
+  - ls /proc/sys/fs/binfmt_misc/
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  - ls /proc/sys/fs/binfmt_misc/
   - docker build --rm --build-arg BASE_IMAGE="${BASE_IMAGE}" -t my-fedora .
 script:
   - docker run --rm -t my-fedora bash -cx "uname -m && make clean test"
