@@ -1,21 +1,6 @@
 dist: xenial
 language: bash
 services: docker
-addons:
-  apt:
-    config:
-      retries: true
-    update: true
-    sources:
-      # To install podman and some container tools.
-      # https://github.com/containers/libpod/blob/master/install.md
-      - sourceline: "ppa:projectatomic/ppa"
-    packages:
-      - jq
-      # repository: ppa:projectatomic/ppa
-      - podman
-      - buildah
-      - skopeo
 matrix:
   include:
     # Fedora container image repository
@@ -23,15 +8,15 @@ matrix:
     #   https://hub.docker.com/_/fedora
     # * Fedora official container repository. But it's slow to download.
     #   https://registry.fedoraproject.org/
-    - name: docker-x86_64"
+    - name: x86_64
       env: BASE_IMAGE=fedora
-    - name: docker-aarch64
+    - name: aarch64
       env: BASE_IMAGE=arm64v8/fedora
-    - name: docker-arm32"
+    - name: arm32
       env: BASE_IMAGE=arm32v7/fedora
-    - name: docker-ppc64le"
+    - name: ppc64le
       env: BASE_IMAGE=ppc64le/fedora
-    - name: docker-s390x"
+    - name: s390x
       env: BASE_IMAGE=s390x/fedora
 
     # ====================
@@ -55,6 +40,18 @@ matrix:
         - docker buildx build --rm -t my-fedora:aarch64 --platform "${PLATFORM}" .
 
     - name: "Advanced: podman-aarch64"
+      addons:
+        apt:
+          packages:
+            - podman
+          sources:
+            # podman and some container tools.
+            # https://github.com/containers/libpod/blob/master/install.md
+            - sourceline: "ppa:projectatomic/ppa"
+      before_install:
+        - podman --version
+        - podman version
+        - podman info --debug
       install:
         # Incompatibilities of podman from docker on Travis CI
         # https://github.com/containers/libpod/issues/3679
@@ -68,15 +65,12 @@ matrix:
   allow_failures:
     # Error: Incorrect or unknown "arch": armv7hcnl
     # https://bugzilla.redhat.com/show_bug.cgi?id=1691430#c6
-    - name: docker-arm32"
+    - name: arm32
     - name: "Advanced: docker-build-platform-aarch64"
     - name: "Advanced: docker-buildx-platform-aarch64"
     - name: "Advanced: podman-aarch64"
   fast_finish: true
 before_install:
-  - podman --version
-  - podman version
-  - podman info --debug
   - docker --version
   - docker version
   - docker info

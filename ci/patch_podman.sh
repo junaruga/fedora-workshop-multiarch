@@ -1,11 +1,9 @@
 #!/bin/bash
 set -xe
 
-# Incompatibilities of podman from docker on Travis CI
-# https://github.com/containers/libpod/issues/3679
 mkdir -p ~/.config/containers
-cp -p ci/registries.conf ~/.config/containers
-cp -p ci/storage.conf ~/.config/containers
+cp -p ci/registries.conf ~/.config/containers/
+cp -p ci/storage.conf ~/.config/containers/
 USER_ID="$(id -u)"
 USER_NAME="$(id -un)"
 sed -i "s/@USER_ID@/${USER_ID}/" ~/.config/containers/storage.conf
@@ -22,3 +20,4 @@ for var_dir in ${var_dirs}; do
     sudo mkdir -p "${var_dir}"
     sudo chown -R "${USER_NAME}" "${var_dir}"
 done
+podman info --debug
