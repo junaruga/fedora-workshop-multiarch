@@ -7,7 +7,7 @@ matrix:
     # * Docker Hub: fedora
     #   https://hub.docker.com/_/fedora
     # * Fedora official container repository. But it's slow to download.
-    #   https://registry.fedoraproject.org/
+    #   https://registry.fedoraproject.org/repo/fedora/tags/
     # Intel, 64-bit, Little-endian
     - name: x86_64
       env: BASE_IMAGE=fedora
@@ -17,6 +17,18 @@ matrix:
     # ARM, 32-bit, Little-endian
     - name: armv7hl
       env: BASE_IMAGE=arm32v7/fedora
+
+    # As "arm32v7/fedora" case has an error, "arm32v7/fedora:26" is
+    # the temporary workflow of arm32.
+    # arm32v7/fedora:27, 28, 29 do not work with the error message
+    # "Error: Failed to synchronize cache for repo 'fedora'".
+    - name: armv7hl-26
+      env: BASE_IMAGE=arm32v7/fedora:26
+    # armv7hl: failed to install with error: unpacking of archive failed on file.
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1738233
+    # - name: armv7hl-31-official-repo
+    #   env: BASE_IMAGE=registry.fedoraproject.org/fedora:31-armhfp
+
     # IBM PowerPC, 64-bit, Little-endian
     - name: ppc64le
       env: BASE_IMAGE=ppc64le/fedora
