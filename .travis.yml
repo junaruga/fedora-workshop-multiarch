@@ -47,6 +47,7 @@ matrix:
             # podman and some container tools.
             # https://github.com/containers/libpod/blob/master/install.md
             - sourceline: "ppa:projectatomic/ppa"
+      env: BASE_IMAGE=arm64v8/fedora
       before_install:
         - podman --version
         - podman version
@@ -54,11 +55,10 @@ matrix:
       install:
         # Incompatibilities of podman from docker on Travis CI
         # https://github.com/containers/libpod/issues/3679
-        - ci/patch_podman.sh
+        - mkdir -p /etc/containers
+        - echo -e "[registries.search]\nregistries = ['docker.io']" | sudo tee /etc/containers/registries.conf
 
-        - sudo podman --log-level debug pull multiarch/qemu-user-static
-        - sudo podman --log-level debug run --rm --privileged multiarch/qemu-user-static --reset -p yes
-        # - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        - sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
         - podman build --rm --build-arg BASE_IMAGE="${BASE_IMAGE}" -t my-fedora .
       script:
         - podman run --rm -t my-fedora bash -cx "uname -m && make clean test"
@@ -90,7 +90,6 @@ matrix:
     # Error: Incorrect or unknown "arch": armv7hcnl
     # https://bugzilla.redhat.com/show_bug.cgi?id=1691430#c6
     - name: armv7hl
-    - name: "Advanced: podman-aarch64"
     - name: "Advanced: docker-build-platform-aarch64"
     - name: "Advanced: docker-buildx-build-platform-aarch64"
   fast_finish: true
