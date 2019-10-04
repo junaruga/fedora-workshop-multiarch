@@ -17,7 +17,12 @@ RUN ARCH=$(rpm -q rpm --qf "%{arch}") && \
   # Optional packages to show an example.
   python3 && \
   dnf clean all
-RUN gcc --version
-RUN python3 --version
+RUN useradd -m tester
 WORKDIR /work
 COPY . .
+RUN chown -R "tester:tester" /work
+
+USER tester
+RUN id
+RUN gcc --version
+RUN python3 --version
